@@ -667,6 +667,35 @@ int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *n,
 int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *n,
                  const EC_POINT *q, const BIGNUM *m, BN_CTX *ctx);
 
+
+/** Computes r = generator * n + sum_{i=0}^{num-1} p[i] * m[i]
+ *  \param  group  underlying EC_GROUP object
+ *  \param  r      EC_POINT object for the result
+ *  \param  n      BIGNUM with the multiplier for the group generator (optional)
+ *  \param  num    number further summands
+ *  \param  p      array of size num of EC_POINT objects
+ *  \param  m      array of size num of BIGNUM objects
+ *  \param  ctx    BN_CTX object (optional)
+ *  \return 1 on success and 0 if an error occurred
+ */
+int EC_POINTs_non_ctime_mul(const EC_GROUP *group, EC_POINT *r, 
+                            const BIGNUM *scalar, size_t num, 
+                            const EC_POINT *points[], const BIGNUM *scalars[], 
+                            BN_CTX *ctx);
+
+/** Computes r = generator * n + q * m
+ *  \param  group  underlying EC_GROUP object
+ *  \param  r      EC_POINT object for the result
+ *  \param  n      BIGNUM with the multiplier for the group generator (optional)
+ *  \param  q      EC_POINT object with the first factor of the second summand
+ *  \param  m      BIGNUM with the second factor of the second summand
+ *  \param  ctx    BN_CTX object (optional)
+ *  \return 1 on success and 0 if an error occurred
+ */
+int EC_POINT_non_ctime_mul(const EC_GROUP *group,  EC_POINT *r, 
+                           const BIGNUM *scalar,const EC_POINT *point, 
+                           const BIGNUM *p_scalar, BN_CTX *ctx);
+
 /** Stores multiples of generator for faster point multiplication
  *  \param  group  EC_GROUP object
  *  \param  ctx    BN_CTX object (optional)

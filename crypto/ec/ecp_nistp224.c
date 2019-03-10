@@ -276,6 +276,8 @@ const EC_METHOD *EC_GFp_nistp224_method(void)
         ec_GFp_nistp224_points_mul,
         ec_GFp_nistp224_precompute_mult,
         ec_GFp_nistp224_have_precompute_mult,
+        0, /* non_ctime_mul */
+        0, /* precompute_mult_for_point */
         ec_GFp_nist_field_mul,
         ec_GFp_nist_field_sqr,
         0 /* field_div */ ,
@@ -292,6 +294,7 @@ const EC_METHOD *EC_GFp_nistp224_method(void)
         0, /* keyfinish */
         ecdh_simple_compute_key,
         0, /* field_inverse_mod_ord */
+        0, /* field_inverse_mod_ord_non_ctime */
         0  /* blind_coordinates */
     };
 
@@ -1698,7 +1701,7 @@ int ec_GFp_nistp224_precompute_mult(EC_GROUP *group, BN_CTX *ctx)
     make_points_affine(31, &(pre->g_pre_comp[0][1]), tmp_felems);
 
  done:
-    SETPRECOMP(group, nistp224, pre);
+    SETPRECOMP(group->generator, nistp224, pre);
     pre = NULL;
     ret = 1;
  err:
@@ -1711,7 +1714,7 @@ int ec_GFp_nistp224_precompute_mult(EC_GROUP *group, BN_CTX *ctx)
 
 int ec_GFp_nistp224_have_precompute_mult(const EC_GROUP *group)
 {
-    return HAVEPRECOMP(group, nistp224);
+    return HAVEPRECOMP(group->generator, nistp224);
 }
 
 #endif

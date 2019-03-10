@@ -47,15 +47,17 @@ const EC_METHOD *EC_GF2m_simple_method(void)
         ec_GF2m_simple_cmp,
         ec_GF2m_simple_make_affine,
         ec_GF2m_simple_points_make_affine,
-        0 /* mul */,
-        0 /* precompute_mul */,
-        0 /* have_precompute_mul */,
+        0, /* mul */
+        0, /* precompute_mul */
+        0, /* have_precompute_mul */
+        0, /* non_ctime_mul */
+        0, /* precompute_mult_for_point */
         ec_GF2m_simple_field_mul,
         ec_GF2m_simple_field_sqr,
         ec_GF2m_simple_field_div,
-        0 /* field_encode */ ,
-        0 /* field_decode */ ,
-        0,                      /* field_set_to_one */
+        0, /* field_encode */
+        0, /* field_decode */
+        0, /* field_set_to_one */
         ec_key_simple_priv2oct,
         ec_key_simple_oct2priv,
         0, /* set private */
@@ -314,6 +316,38 @@ int ec_GF2m_simple_point_copy(EC_POINT *dest, const EC_POINT *src)
         return 0;
     dest->Z_is_one = src->Z_is_one;
     dest->curve_name = src->curve_name;
+
+    /* Copy precomputed */
+    dest->pre_comp_type = src->pre_comp_type;
+    switch (src->pre_comp_type) {
+    case PCT_none:
+        dest->pre_comp.ec = NULL;
+        break;
+    case PCT_nistz256:
+#ifdef ECP_NISTZ256_ASM
+        dest->pre_comp.nistz256 = EC_nistz256_pre_comp_dup(src->pre_comp.nistz256);
+#endif
+        break;
+#ifndef OPENSSL_NO_EC_NISTP_64_GCC_128
+    case PCT_nistp224:
+        dest->pre_comp.nistp224 = EC_nistp224_pre_comp_dup(src->pre_comp.nistp224);
+        break;
+    case PCT_nistp256:
+        dest->pre_comp.nistp256 = EC_nistp256_pre_comp_dup(src->pre_comp.nistp256);
+        break;
+    case PCT_nistp521:
+        dest->pre_comp.nistp521 = EC_nistp521_pre_comp_dup(src->pre_comp.nistp521);
+        break;
+#else
+    case PCT_nistp224:
+    case PCT_nistp256:
+    case PCT_nistp521:
+        break;
+#endif
+    case PCT_ec:
+        dest->pre_comp.ec = EC_ec_pre_comp_dup(src->pre_comp.ec);
+        break;
+    }
 
     return 1;
 }

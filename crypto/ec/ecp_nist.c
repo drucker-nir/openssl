@@ -46,15 +46,17 @@ const EC_METHOD *EC_GFp_nist_method(void)
         ec_GFp_simple_cmp,
         ec_GFp_simple_make_affine,
         ec_GFp_simple_points_make_affine,
-        0 /* mul */ ,
-        0 /* precompute_mult */ ,
-        0 /* have_precompute_mult */ ,
+        0, /* mul */
+        0, /* precompute_mult */
+        0, /* have_precompute_mult */
+        0, /* non_ctime_mul */
+        0, /* precompute_mult_for_point */
         ec_GFp_nist_field_mul,
         ec_GFp_nist_field_sqr,
-        0 /* field_div */ ,
-        0 /* field_encode */ ,
-        0 /* field_decode */ ,
-        0,                      /* field_set_to_one */
+        0, /* field_div */
+        0, /* field_encode */
+        0, /* field_decode */
+        0, /* field_set_to_one */
         ec_key_simple_priv2oct,
         ec_key_simple_oct2priv,
         0, /* set private */
@@ -65,6 +67,7 @@ const EC_METHOD *EC_GFp_nist_method(void)
         0, /* keyfinish */
         ecdh_simple_compute_key,
         0, /* field_inverse_mod_ord */
+        0, /* field_inverse_mod_ord_non_ctime */
         ec_GFp_simple_blind_coordinates
     };
 

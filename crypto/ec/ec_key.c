@@ -497,7 +497,18 @@ int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx)
 {
     if (key->group == NULL)
         return 0;
-    return EC_GROUP_precompute_mult(key->group, ctx);
+    
+    if(!EC_GROUP_precompute_mult(key->group, ctx))
+        return 0;
+
+    if ((key->pub_key != NULL) && 
+        (key->group->meth->precompute_mult_for_point != NULL))
+    {
+        return key->group->meth->precompute_mult_for_point(key->group, key->pub_key, ctx);
+    }
+    
+    return 1;
+    
 }
 
 int EC_KEY_get_flags(const EC_KEY *key)

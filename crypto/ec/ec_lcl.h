@@ -143,6 +143,11 @@ struct ec_method_st {
                 BN_CTX *);
     int (*precompute_mult) (EC_GROUP *group, BN_CTX *);
     int (*have_precompute_mult) (const EC_GROUP *group);
+    /* public key operations */
+    int (*non_ctime_mul) (const EC_GROUP *group, EC_POINT *r, 
+                          const BIGNUM *scalar, size_t num, 
+                          const EC_POINT *points[], const BIGNUM *scalars[], BN_CTX *);
+    int (*precompute_mult_for_point) (const EC_GROUP *group, EC_POINT *Q, BN_CTX *ctx);
     /* internal functions */
     /*
      * 'field_mul', 'field_sqr', and 'field_div' can be used by 'add' and
@@ -176,6 +181,8 @@ struct ec_method_st {
                             const EC_POINT *pub_key, const EC_KEY *ecdh);
     /* Inverse modulo order */
     int (*field_inverse_mod_ord)(const EC_GROUP *, BIGNUM *r,
+                                 const BIGNUM *x, BN_CTX *);
+    int (*field_inverse_mod_ord_non_ctime)(const EC_GROUP *, BIGNUM *r,
                                  const BIGNUM *x, BN_CTX *);
     int (*blind_coordinates)(const EC_GROUP *group, EC_POINT *p, BN_CTX *ctx);
 };
@@ -236,30 +243,7 @@ struct ec_group_st {
                            BN_CTX *);
     /* data for ECDSA inverse */
     BN_MONT_CTX *mont_data;
-
-    /*
-     * Precomputed values for speed. The PCT_xxx names match the
-     * pre_comp.xxx union names; see the SETPRECOMP and HAVEPRECOMP
-     * macros, below.
-     */
-    enum {
-        PCT_none,
-        PCT_nistp224, PCT_nistp256, PCT_nistp521, PCT_nistz256,
-        PCT_ec
-    } pre_comp_type;
-    union {
-        NISTP224_PRE_COMP *nistp224;
-        NISTP256_PRE_COMP *nistp256;
-        NISTP521_PRE_COMP *nistp521;
-        NISTZ256_PRE_COMP *nistz256;
-        EC_PRE_COMP *ec;
-    } pre_comp;
 };
-
-#define SETPRECOMP(g, type, pre) \
-    g->pre_comp_type = PCT_##type, g->pre_comp.type = pre
-#define HAVEPRECOMP(g, type) \
-    g->pre_comp_type == PCT_##type && g->pre_comp.type != NULL
 
 struct ec_key_st {
     const EC_KEY_METHOD *meth;
@@ -290,8 +274,31 @@ struct ec_point_st {
                                  * Z) represents (X/Z^2, Y/Z^3) if Z != 0 */
     int Z_is_one;               /* enable optimized point arithmetics for
                                  * special case */
+
+    /*
+     * Precomputed values for speed. The PCT_xxx names match the
+     * pre_comp.xxx union names; see the SETPRECOMP and HAVEPRECOMP
+     * macros, below.
+     */
+    enum {
+        PCT_none,
+        PCT_nistp224, PCT_nistp256, PCT_nistp521, PCT_nistz256,
+        PCT_ec
+    } pre_comp_type;
+    union {
+        NISTP224_PRE_COMP *nistp224;
+        NISTP256_PRE_COMP *nistp256;
+        NISTP521_PRE_COMP *nistp521;
+        NISTZ256_PRE_COMP *nistz256;
+        EC_PRE_COMP *ec;
+    } pre_comp;
 };
 
+#define SETPRECOMP(p, type, pre) \
+    p->pre_comp_type = PCT_##type, \
+    p->pre_comp.type = pre
+#define HAVEPRECOMP(p, type) \
+    (p && (p->pre_comp_type == PCT_##type) && (p->pre_comp.type != NULL))
 
 static ossl_inline int ec_point_is_compat(const EC_POINT *point,
                                           const EC_GROUP *group)
@@ -313,7 +320,7 @@ NISTZ256_PRE_COMP *EC_nistz256_pre_comp_dup(NISTZ256_PRE_COMP *);
 NISTP256_PRE_COMP *EC_nistp256_pre_comp_dup(NISTP256_PRE_COMP *);
 EC_PRE_COMP *EC_ec_pre_comp_dup(EC_PRE_COMP *);
 
-void EC_pre_comp_free(EC_GROUP *group);
+void EC_pre_comp_free(EC_POINT *point);
 void EC_nistp224_pre_comp_free(NISTP224_PRE_COMP *);
 void EC_nistp256_pre_comp_free(NISTP256_PRE_COMP *);
 void EC_nistp521_pre_comp_free(NISTP521_PRE_COMP *);

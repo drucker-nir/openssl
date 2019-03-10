@@ -47,6 +47,8 @@ const EC_METHOD *EC_GFp_mont_method(void)
         0 /* mul */ ,
         0 /* precompute_mult */ ,
         0 /* have_precompute_mult */ ,
+        0, /* non_ctime_mul */
+        0, /* precompute_mult_for_point */
         ec_GFp_mont_field_mul,
         ec_GFp_mont_field_sqr,
         0 /* field_div */ ,
@@ -63,6 +65,7 @@ const EC_METHOD *EC_GFp_mont_method(void)
         0, /* keyfinish */
         ecdh_simple_compute_key,
         0, /* field_inverse_mod_ord */
+        0, /* field_inverse_mod_ord_non_ctime */
         ec_GFp_simple_blind_coordinates
     };
 

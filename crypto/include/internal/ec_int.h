@@ -41,5 +41,8 @@
 __owur int ec_group_do_inverse_ord(const EC_GROUP *group, BIGNUM *res,
                                    const BIGNUM *x, BN_CTX *ctx);
 
+__owur int ec_group_do_inverse_ord_non_ctime(const EC_GROUP *group, BIGNUM *res,
+                                             const BIGNUM *x, BN_CTX *ctx);
+
 # endif /* OPENSSL_NO_EC */
 #endif

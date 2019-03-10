@@ -426,7 +426,7 @@ int ossl_ecdsa_verify_sig(const unsigned char *dgst, int dgst_len,
         goto err;
     }
     /* calculate tmp1 = inv(S) mod order */
-    if (!ec_group_do_inverse_ord(group, u2, sig->s, ctx)) {
+    if (!ec_group_do_inverse_ord_non_ctime(group, u2, sig->s, ctx)) {
         ECerr(EC_F_OSSL_ECDSA_VERIFY_SIG, ERR_R_BN_LIB);
         goto err;
     }
@@ -461,7 +461,7 @@ int ossl_ecdsa_verify_sig(const unsigned char *dgst, int dgst_len,
         ECerr(EC_F_OSSL_ECDSA_VERIFY_SIG, ERR_R_MALLOC_FAILURE);
         goto err;
     }
-    if (!EC_POINT_mul(group, point, u1, pub_key, u2, ctx)) {
+    if (!EC_POINT_non_ctime_mul(group, point, u1, pub_key, u2, ctx)) {
         ECerr(EC_F_OSSL_ECDSA_VERIFY_SIG, ERR_R_EC_LIB);
         goto err;
     }

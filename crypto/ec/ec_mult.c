@@ -437,7 +437,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
 
         /* look if we can use precomputed multiples of generator */
 
-        pre_comp = group->pre_comp.ec;
+        pre_comp = group->generator->pre_comp.ec;
         if (pre_comp && pre_comp->numblocks
             && (EC_POINT_cmp(group, generator, pre_comp->points[0], ctx) ==
                 0)) {
@@ -788,7 +788,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx)
     int ret = 0;
 
     /* if there is an old EC_PRE_COMP object, throw it away */
-    EC_pre_comp_free(group);
+    EC_pre_comp_free(group->generator);
     if ((pre_comp = ec_pre_comp_new(group)) == NULL)
         return 0;
 
@@ -908,7 +908,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx)
     pre_comp->points = points;
     points = NULL;
     pre_comp->num = num;
-    SETPRECOMP(group, ec, pre_comp);
+    SETPRECOMP(group->generator, ec, pre_comp);
     pre_comp = NULL;
     ret = 1;
 
@@ -931,5 +931,5 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx)
 
 int ec_wNAF_have_precompute_mult(const EC_GROUP *group)
 {
-    return HAVEPRECOMP(group, ec);
+    return HAVEPRECOMP(group->generator, ec);
 }

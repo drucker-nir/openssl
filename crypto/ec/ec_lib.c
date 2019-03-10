@@ -58,25 +58,30 @@ EC_GROUP *EC_GROUP_new(const EC_METHOD *meth)
     return NULL;
 }
 
-void EC_pre_comp_free(EC_GROUP *group)
+void EC_pre_comp_free(EC_POINT* p)
 {
-    switch (group->pre_comp_type) {
+    /* Nothing to be freed */
+    if(p == NULL) {
+        return;
+    }
+
+    switch (p->pre_comp_type) {
     case PCT_none:
         break;
     case PCT_nistz256:
 #ifdef ECP_NISTZ256_ASM
-        EC_nistz256_pre_comp_free(group->pre_comp.nistz256);
+        EC_nistz256_pre_comp_free(p->pre_comp.nistz256);
 #endif
         break;
 #ifndef OPENSSL_NO_EC_NISTP_64_GCC_128
     case PCT_nistp224:
-        EC_nistp224_pre_comp_free(group->pre_comp.nistp224);
+        EC_nistp224_pre_comp_free(p->pre_comp.nistp224);
         break;
     case PCT_nistp256:
-        EC_nistp256_pre_comp_free(group->pre_comp.nistp256);
+        EC_nistp256_pre_comp_free(p->pre_comp.nistp256);
         break;
     case PCT_nistp521:
-        EC_nistp521_pre_comp_free(group->pre_comp.nistp521);
+        EC_nistp521_pre_comp_free(p->pre_comp.nistp521);
         break;
 #else
     case PCT_nistp224:
@@ -85,10 +90,10 @@ void EC_pre_comp_free(EC_GROUP *group)
         break;
 #endif
     case PCT_ec:
-        EC_ec_pre_comp_free(group->pre_comp.ec);
+        EC_ec_pre_comp_free(p->pre_comp.ec);
         break;
     }
-    group->pre_comp.ec = NULL;
+    p->pre_comp.ec = NULL;
 }
 
 void EC_GROUP_free(EC_GROUP *group)
@@ -99,7 +104,6 @@ void EC_GROUP_free(EC_GROUP *group)
     if (group->meth->group_finish != 0)
         group->meth->group_finish(group);
 
-    EC_pre_comp_free(group);
     BN_MONT_CTX_free(group->mont_data);
     EC_POINT_free(group->generator);
     BN_free(group->order);
@@ -118,7 +122,6 @@ void EC_GROUP_clear_free(EC_GROUP *group)
     else if (group->meth->group_finish != 0)
         group->meth->group_finish(group);
 
-    EC_pre_comp_free(group);
     BN_MONT_CTX_free(group->mont_data);
     EC_POINT_clear_free(group->generator);
     BN_clear_free(group->order);
@@ -141,38 +144,6 @@ int EC_GROUP_copy(EC_GROUP *dest, const EC_GROUP *src)
         return 1;
 
     dest->curve_name = src->curve_name;
-
-    /* Copy precomputed */
-    dest->pre_comp_type = src->pre_comp_type;
-    switch (src->pre_comp_type) {
-    case PCT_none:
-        dest->pre_comp.ec = NULL;
-        break;
-    case PCT_nistz256:
-#ifdef ECP_NISTZ256_ASM
-        dest->pre_comp.nistz256 = EC_nistz256_pre_comp_dup(src->pre_comp.nistz256);
-#endif
-        break;
-#ifndef OPENSSL_NO_EC_NISTP_64_GCC_128
-    case PCT_nistp224:
-        dest->pre_comp.nistp224 = EC_nistp224_pre_comp_dup(src->pre_comp.nistp224);
-        break;
-    case PCT_nistp256:
-        dest->pre_comp.nistp256 = EC_nistp256_pre_comp_dup(src->pre_comp.nistp256);
-        break;
-    case PCT_nistp521:
-        dest->pre_comp.nistp521 = EC_nistp521_pre_comp_dup(src->pre_comp.nistp521);
-        break;
-#else
-    case PCT_nistp224:
-    case PCT_nistp256:
-    case PCT_nistp521:
-        break;
-#endif
-    case PCT_ec:
-        dest->pre_comp.ec = EC_ec_pre_comp_dup(src->pre_comp.ec);
-        break;
-    }
 
     if (src->mont_data != NULL) {
         if (dest->mont_data == NULL) {
@@ -590,6 +561,8 @@ void EC_POINT_free(EC_POINT *point)
 
     if (point->meth->point_finish != 0)
         point->meth->point_finish(point);
+    
+    EC_pre_comp_free(point);
     OPENSSL_free(point);
 }
 
@@ -602,6 +575,9 @@ void EC_POINT_clear_free(EC_POINT *point)
         point->meth->point_clear_finish(point);
     else if (point->meth->point_finish != 0)
         point->meth->point_finish(point);
+    
+    EC_pre_comp_free(point);
+
     OPENSSL_clear_free(point, sizeof(*point));
 }
 
@@ -942,6 +918,45 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                           && p_scalar != NULL), points, scalars, ctx);
 }
 
+/*
+ * Functions for non_constant time point multiplication. 
+ * These functions are faster than the EC_POINT_mul functions.
+ * and should be used only when no secret is being invloved in the calculations.
+ * For example, during verification. 
+ * If group->meth->non_ctime_mul is 0, 
+ * we use the regular constant time group->meth->mul implementation.
+*/
+
+int EC_POINTs_non_ctime_mul(const EC_GROUP *group, EC_POINT *r, 
+                            const BIGNUM *scalar, size_t num, 
+                            const EC_POINT *points[], const BIGNUM *scalars[], 
+                            BN_CTX *ctx)
+{
+    if (group->meth->non_ctime_mul == 0)
+        /* use default */
+        return EC_POINTs_mul(group, r, scalar, num, points, scalars, ctx);
+
+    return group->meth->non_ctime_mul(group, r, scalar, num, 
+                                      points, scalars, ctx);
+}
+
+int EC_POINT_non_ctime_mul(const EC_GROUP *group,  EC_POINT *r, 
+                           const BIGNUM *scalar, const EC_POINT *point, 
+                           const BIGNUM *p_scalar, BN_CTX *ctx)
+{
+    /* just a convenient interface to EC_POINTs_mul() */
+
+    const EC_POINT *points[1];
+    const BIGNUM *scalars[1];
+
+    points[0] = point;
+    scalars[0] = p_scalar;
+
+    return EC_POINTs_non_ctime_mul(group, r, scalar,
+                                   (point != NULL && p_scalar != NULL), 
+                                   points, scalars, ctx);
+}
+
 int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx)
 {
     if (group->meth->mul == 0)
@@ -1078,6 +1093,15 @@ int ec_group_do_inverse_ord(const EC_GROUP *group, BIGNUM *res,
         return group->meth->field_inverse_mod_ord(group, res, x, ctx);
     else
         return ec_field_inverse_mod_ord(group, res, x, ctx);
+}
+
+int ec_group_do_inverse_ord_non_ctime(const EC_GROUP *group, BIGNUM *res,
+                            const BIGNUM *x, BN_CTX *ctx)
+{
+    if (group->meth->field_inverse_mod_ord_non_ctime != NULL)
+       return group->meth->field_inverse_mod_ord_non_ctime(group, res, x, ctx);
+    else
+       return ec_group_do_inverse_ord(group, res, x, ctx);
 }
 
 /*-

@@ -46,8 +46,10 @@ const EC_METHOD *EC_GFp_simple_method(void)
         ec_GFp_simple_make_affine,
         ec_GFp_simple_points_make_affine,
         0 /* mul */ ,
+        0 /* non_ctime_mul */ ,
         0 /* precompute_mult */ ,
         0 /* have_precompute_mult */ ,
+        0, /* pk_precompute_mult */
         ec_GFp_simple_field_mul,
         ec_GFp_simple_field_sqr,
         0 /* field_div */ ,
@@ -64,6 +66,7 @@ const EC_METHOD *EC_GFp_simple_method(void)
         0, /* keyfinish */
         ecdh_simple_compute_key,
         0, /* field_inverse_mod_ord */
+        0, /* field_inverse_mod_ord_non_ctime */
         ec_GFp_simple_blind_coordinates
     };
 
@@ -322,6 +325,9 @@ int ec_GFp_simple_point_init(EC_POINT *point)
         BN_free(point->Z);
         return 0;
     }
+    
+    /* It is a union of pointers so we arbitrarily chose .ec */
+    point->pre_comp.ec = NULL;
     return 1;
 }
 
